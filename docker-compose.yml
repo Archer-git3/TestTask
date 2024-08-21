@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  postgres-user-service:
+    image: postgres:15
+    container_name: postgres-user-service
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 111
+      POSTGRES_DB: TestTask
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  user-service:
+    build: ./user-service/
+    container_name: user-service
+    environment:
+      DATABASE_URL: postgres://postgres:111@5432/TestTask
+    depends_on:
+      - postgres-user-service
+    ports:
+      - "8000:8000"
+
+  postgres-post-service:
+    image: postgres:15
+    container_name: postgres-post-service
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 111
+      POSTGRES_DB: TestTask
+    volumes:
+      - postgres_post_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  post-service:
+    build: ./Post-service/
+    container_name: post-service
+    environment:
+      DATABASE_URL: postgres://postgres:111@5432/TestTask
+    depends_on:
+      - postgres-post-service
+    ports:
+      - "8001:8001"
+
+  redis:
+    image: redis:7.0
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  analyst-service:
+    build: ./Analyst-service/
+    container_name: analyst-service
+    environment:
+      REDIS_HOST: redis
+      USER_SERVICE_URL: http://user-service:8000
+      POST_SERVICE_URL: http://post-service:8001
+    depends_on:
+      - redis
+      - user-service
+      - post-service
+    ports:
+      - "8002:8002"
+
+volumes:
+  postgres_user_data:
+  postgres_post_data:
